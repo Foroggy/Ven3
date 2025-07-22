@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Center Function Venn Tool</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Surface Function to Center Venn Diagram</title>
   <script src="https://d3js.org/d3.v4.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
   <style>
@@ -23,101 +23,78 @@
       padding: 10px 20px;
       font-size: 16px;
     }
-    #venn1, #venn2 {
+    #venn {
       width: 1400px;
       height: 1000px;
-      margin-bottom: 30px;
     }
     .label { font-size: 12px; }
   </style>
 </head>
 <body>
-  <h1>Center Function Venn Tool</h1>
-  <p>Enter up to 15 rows of Centers and Surface Functions (comma-separated):</p>
+  <h2>Surface Function to Center Venn Diagram + GAP</h2>
+  <p>Enter Centers and Surface Functions (comma-separated if multiple):</p>
   <table id="inputTable">
     <thead>
-      <tr><th>Center</th><th>Surface Function(s)</th></tr>
+      <tr><th>Surface Function</th><th>Center(s)</th></tr>
     </thead>
     <tbody></tbody>
   </table>
   <button class="button" onclick="addRow()">+ Add Row</button>
-  <button class="button" onclick="generateDiagram()">Generate Venn Diagram</button>
+  <button class="button" onclick="generateVenn()">Generate Diagram</button>
 
-  <div id="venn1"></div>
+  <div id="venn"></div>
 
   <script>
     const tableBody = document.querySelector("#inputTable tbody");
-
     function addRow() {
       const row = document.createElement("tr");
-      row.innerHTML = `<td><input type="text" /></td><td><input type="text" /></td>`;
+      row.innerHTML = `<td><input type="text"></td><td><input type="text"></td>`;
       tableBody.appendChild(row);
     }
-
     for (let i = 0; i < 15; i++) addRow();
 
-    function parseInput() {
+    function generateVenn() {
       const rows = tableBody.querySelectorAll("tr");
       const centerMap = {};
-      const functionMap = {};
-      const noCenterFunctions = new Set();
+      let gapCount = 0;
 
-      for (const row of rows) {
-        const cells = row.querySelectorAll("input");
-        const center = cells[0].value.trim();
-        const functions = cells[1].value.trim().split(/,\s*/).filter(Boolean);
+      rows.forEach(row => {
+        const sf = row.children[0].querySelector("input").value.trim();
+        const centers = row.children[1].querySelector("input").value.trim().split(/,\s*/).filter(Boolean);
 
-        if (!center && functions.length > 0) {
-          functions.forEach(f => noCenterFunctions.add(f));
-          continue;
+        if (!sf) return;
+        if (centers.length === 0) {
+          gapCount++;
+        } else {
+          centers.forEach(center => {
+            if (!centerMap[center]) centerMap[center] = new Set();
+            centerMap[center].add(sf);
+          });
         }
-
-        if (!centerMap[center]) centerMap[center] = new Set();
-        functions.forEach(f => centerMap[center].add(f));
-
-        functions.forEach(f => {
-          if (!functionMap[f]) functionMap[f] = new Set();
-          functionMap[f].add(center);
-        });
-      }
-
-      return { centerMap, functionMap, noCenterFunctions };
-    }
-
-    function generateDiagram() {
-      const { centerMap, noCenterFunctions } = parseInput();
-      const venn1 = document.getElementById("venn1");
-      venn1.innerHTML = "";
-
-      const sets = [];
-      const centerNames = Object.keys(centerMap);
-
-      // Add single center sets
-      centerNames.forEach(center => {
-        sets.push({ sets: [center], size: centerMap[center].size });
       });
 
-      // Add overlaps
-      for (let i = 0; i < centerNames.length; i++) {
-        for (let j = i + 1; j < centerNames.length; j++) {
-          const a = centerMap[centerNames[i]];
-          const b = centerMap[centerNames[j]];
-          const overlapSize = [...a].filter(x => b.has(x)).length;
-          if (overlapSize > 0) {
-            sets.push({ sets: [centerNames[i], centerNames[j]], size: overlapSize });
+      const centerKeys = Object.keys(centerMap);
+      const sets = centerKeys.map(center => ({ sets: [center], size: centerMap[center].size }));
+
+      for (let i = 0; i < centerKeys.length; i++) {
+        for (let j = i + 1; j < centerKeys.length; j++) {
+          const a = centerMap[centerKeys[i]];
+          const b = centerMap[centerKeys[j]];
+          const overlap = [...a].filter(x => b.has(x)).length;
+          if (overlap > 0) {
+            sets.push({ sets: [centerKeys[i], centerKeys[j]], size: overlap });
           }
         }
       }
 
-      // Add gap (no associated center)
-      if (noCenterFunctions.size > 0) {
-        sets.push({ sets: ["GAP"], size: noCenterFunctions.size });
+      if (gapCount > 0) {
+        sets.push({ sets: ["GAP"], size: gapCount });
       }
 
       const chart = venn.VennDiagram().width(1400).height(1000);
-      d3.select("#venn1").datum(sets).call(chart);
+      d3.select("#venn").datum(sets).call(chart);
 
-      d3.selectAll("#venn1 .label").style("fill", "black");
+      d3.selectAll("#venn .label").style("fill", "black");
       d3.selectAll(".venn-area")
         .filter(d => d.sets.includes("GAP"))
         .style("fill", "#f77")
@@ -127,3 +104,4 @@
   </script>
 </body>
 </html>
+
