@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Center Function Venn Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/venn.js@0.2.20/venn.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 40px;
+    }
+    table {
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    th, td {
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+    }
+    .button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
+    #venn1, #venn2 {
+      width: 600px;
+      height: 400px;
+      margin-bottom: 30px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Center Function Venn Tool</h1>
+  <p>Enter up to 15 rows of Centers and Surface Functions (comma-separated):</p>
+  <table id="inputTable">
+    <thead>
+      <tr><th>Center</th><th>Surface Function(s)</th></tr>
+    </thead>
+    <tbody>
+      <!-- Rows inserted via JavaScript -->
+    </tbody>
+  </table>
+  <button class="button" onclick="addRow()">+ Add Row</button>
+  <button class="button" onclick="generateDiagrams()">Generate Venn Diagrams</button>
+
+  <div id="venn1"></div>
+  <div id="venn2"></div>
+
+  <script>
+    const tableBody = document.querySelector("#inputTable tbody");
+
+    function addRow() {
+      const row = document.createElement("tr");
+      row.innerHTML = `<td><input type="text" /></td><td><input type="text" /></td>`;
+      tableBody.appendChild(row);
+    }
+
+    for (let i = 0; i < 15; i++) addRow();
+
+    function parseData() {
+      const rows = tableBody.querySelectorAll("tr");
+      const centerMap = {};
+      const functionMap = {};
+
+      for (const row of rows) {
+        const cells = row.querySelectorAll("input");
+        const center = cells[0].value.trim();
+        const funcs = cells[1].value.trim().split(/,\s*/).filter(Boolean);
+        if (!center && funcs.length === 0) continue;
+
+        if (!centerMap[center]) centerMap[center] = new Set();
+        funcs.forEach(f => centerMap[center].add(f));
+
+        funcs.forEach(f => {
+          if (!functionMap[f]) functionMap[f] = new Set();
+          functionMap[f].add(center);
+        });
+      }
+      return { centerMap, functionMap };
+    }
+
+    function generateDiagrams() {
+      const { centerMap, functionMap } = parseData();
+
+      const venn1 = document.getElementById("venn1");
+      const venn2 = document.getElementById("venn2");
+      venn1.innerHTML = "";
+      venn2.innerHTML = "";
+
+      const centerKeys = Object.keys(centerMap).filter(k => k);
+      const functionKeys = Object.keys(functionMap);
+
+      if (centerKeys.length >= 2 && centerKeys.length <= 3) {
+        const sets = centerKeys.map(name => ({ sets: [name], size: centerMap[name].size }));
+        const overlaps = [];
+        for (let i = 0; i < centerKeys.length; i++) {
+          for (let j = i + 1; j < centerKeys.length; j++) {
+            const intersect = [...centerMap[centerKeys[i]]].filter(x => centerMap[centerKeys[j]].has(x)).length;
+            if (intersect > 0) overlaps.push({ sets: [centerKeys[i], centerKeys[j]], size: intersect });
+          }
+        }
+        venn.VennDiagram()(venn1, sets.concat(overlaps));
+      } else {
+        venn1.innerHTML = '<p>Please enter 2–3 unique centers for Venn Diagram 1</p>';
+      }
+
+      if (functionKeys.length >= 2 && functionKeys.length <= 3) {
+        const sets = functionKeys.map(name => ({ sets: [name], size: functionMap[name].size }));
+        const overlaps = [];
+        for (let i = 0; i < functionKeys.length; i++) {
+          for (let j = i + 1; j < functionKeys.length; j++) {
+            const intersect = [...functionMap[functionKeys[i]]].filter(x => functionMap[functionKeys[j]].has(x)).length;
+            if (intersect > 0) overlaps.push({ sets: [functionKeys[i], functionKeys[j]], size: intersect });
+          }
+        }
+        venn.VennDiagram()(venn2, sets.concat(overlaps));
+      } else {
+        venn2.innerHTML = '<p>Please enter 2–3 unique surface functions for Venn Diagram 2</p>';
+      }
+    }
+  </script>
+</body>
+</html>
